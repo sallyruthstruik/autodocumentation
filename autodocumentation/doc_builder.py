@@ -4,13 +4,29 @@ import re
 
 from jinja2.environment import Template
 
+from autodocumentation.compat import to_unicode
+from autodocumentation.util import add_prefix_to_lines
+
 LOGGER = logging.getLogger("autodoc")
+
+TEMPLATE = """{% for call in calls %}* {{call.comment or "Пример запроса"}}
+    Request::
+
+        {{call.method}} {{call.url}}
+{{add_prefix_to_lines("        ", call.headers)}}
+
+{{add_prefix_to_lines("        ", call.body)}}
+
+    Response::
+
+{{add_prefix_to_lines("        ", call.response)}}
+{% endfor %}"""
 
 class DocBuilder(object):
 
     writer = None   #type: FlaskRequestWriter
 
-    def __init__(self, limit=1):
+    def __init__(self, limit=3):
         self.limit = limit
 
     def add_doc(self, func):
@@ -24,21 +40,12 @@ class DocBuilder(object):
             LOGGER.exception("Can't build autodoc for func %s", func)
 
     def _modify_docstring(self, doc, calls):
-        examplesPart = Template(
-"""{% for call in calls %}{% for line in call %}{{space}}{{line}}
-{% endfor %}{% endfor %}"""
-        )
+        examplesPart = Template(to_unicode(TEMPLATE))
 
         space = re.findall(r"([\t ]+)\<examples\>", doc)[0]
 
-        calls = [
-            [line.strip("\n\r") for line in call.split("\n")]
-            for call in calls
-        ]
-
-        examplesPart = examplesPart.render(
-            space=space,
-            calls=calls
-        )
-
-        return re.sub(r"[\t ]+\<examples\>", examplesPart, doc)
+        return add_prefix_to_lines(space, examplesPart.render(
+            calls=calls,
+            add_prefix_to_lines=add_prefix_to_lines,
+            space=space
+        ))

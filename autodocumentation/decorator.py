@@ -32,34 +32,47 @@ Autodoc
     Для сохранения вызовов нужно указать переменную окружения AUTODOC_WRITE.
 
 """
-import io
-import logging
+import contextlib
+import threading
 from functools import wraps
 
-from autodoc.doc_builder import DocBuilder
-from autodoc.flask_writer import FlaskRequestWriter
+from autodocumentation.doc_builder import DocBuilder
+from autodocumentation.flask_writer import FlaskRequestWriter
 
+_locals = threading.local()
 
+class autodoc(object):
 
-def autodoc_dec(writer=FlaskRequestWriter(), doc_builder=DocBuilder()):
+    def __init__(self, writer=FlaskRequestWriter(), doc_builder=DocBuilder()):
+        self.doc_builder = doc_builder
+        self.writer = writer
+        self.doc_builder.writer = self.writer
 
-    doc_builder.writer = FlaskRequestWriter()
+    @classmethod
+    @contextlib.contextmanager
+    def context(cls, **k):
+        try:
+            _locals.context = k
+            yield
+        finally:
+            del _locals.context
 
-    def decorator(func):
+    @classmethod
+    def get_context(cls):
+        return getattr(_locals, "context", {})
 
+    def decorator(self, func):
         @wraps(func)
         def inner(*a, **k):
             output = func(*a, **k)
 
-            if writer.allow_write():
-                writer.write(
+            if self.writer.allow_write():
+                self.writer.write(
                     func, output, *a, **k
                 )
 
             return output
 
-        doc_builder.add_doc(inner)
+        self.doc_builder.add_doc(inner)
 
         return inner
-
-    return decorator

@@ -1,6 +1,8 @@
 import json
 import os
 
+from autodocumentation.decorator import autodoc
+
 try:
     from unittest.mock import patch, Mock
 except:
@@ -10,8 +12,8 @@ import pytest
 from flask import jsonify
 from flask.app import Flask
 
-from autodoc.doc_builder import DocBuilder
-from autodoc.flask_writer import FlaskRequestWriter
+from autodocumentation.doc_builder import DocBuilder
+from autodocumentation.flask_writer import FlaskRequestWriter
 
 @pytest.fixture()
 def app():
@@ -28,7 +30,11 @@ def test_writing(app):
 
     def check_calls(s, calls):
         assert len(calls["test.test"]) == 1
-        assert '"key": "value"' in calls["test.test"][0]
+        assert calls["test.test"][0] == {'body': 'null',
+                                         'headers': '{\n    "Content-Type": "application/json"\n}',
+                                         'method': 'GET',
+                                         'response': '{\n    "key": "value"\n}',
+                                         'url': '/test?key=value'}
 
     func = Mock(__module__="test", __name__="test")
 
@@ -43,16 +49,27 @@ def test_writing(app):
             }
         )):
             FlaskRequestWriter().write(
-                func, {"key": "value"}
+                func, {"key": "value"}, {}
             )
 
+def test_write_context(app):
+    writer = FlaskRequestWriter()
+    func = Mock(__module__="test", __name__="test")
 
-    docBuilder = DocBuilder()
-    docBuilder.writer = FlaskRequestWriter()
+    with patch("flask.globals.request", Mock(
+        method="GET",
+        url="/olala?key=value",
+        json=None,
+        headers={
+            "Content-Type": "application/json"
+        }
+    )):
 
-    assert docBuilder._modify_docstring("   <examples>", [
-        "Test\nTest"
-    ]) == "   Test\n   Test\n"
+        body = '"key": "value"'
+        headers = '"Content-Type": "application/json"'
+
+        with autodoc.context(comment="Test!"):
+            assert writer.serialize(func, jsonify({"key": "value"}))["comment"] == "Test!"
 
 def test_different_response_types(app):
 
@@ -71,9 +88,34 @@ def test_different_response_types(app):
 
         body = '"key": "value"'
         headers = '"Content-Type": "application/json"'
-        assert body in writer.serialize(func, jsonify({"key": "value"}))
-        assert body in writer.serialize(func, {"key": "value"})
-        assert headers in writer.serialize(func, {})
+        assert writer.serialize(func, jsonify({"key": "value"}))["response"] == '{\n    "key": "value"\n}'
+        assert writer.serialize(func, {"key": "value"})["response"] == '{\n    "key": "value"\n}'
+        assert writer.serialize(func, {"key": "value"})["headers"] == '{\n    "Content-Type": "application/json"\n}'
+
+def test_rendering(app):
+
+    writer = FlaskRequestWriter()
+    builder = DocBuilder()
+
+    doc = """
+    <examples>
+"""
+
+    modified = builder._modify_docstring(
+        doc, [{
+            'body': 'null',
+            'headers': '{\n    "Content-Type": "application/json"\n}',
+            'method': 'GET',
+            'response': '{\n    "key": "value"\n}',
+            'url': '/test?key=value'}]
+    )
+    print(modified)
+    assert """            GET /test?key=value
+            {
+                "Content-Type": "application/json"
+            }""" in modified
+
+
 
 
 

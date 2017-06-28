@@ -2,7 +2,9 @@
 import json
 import os
 
-from autodoc.util import add_prefix_to_lines
+from werkzeug.wrappers import Response
+
+from autodocumentation.util import add_prefix_to_lines
 from flask import globals as g
 
 class FlaskRequestWriter(object):
@@ -32,6 +34,8 @@ class FlaskRequestWriter(object):
         )
 
     def serialize(self, func, output, *a, **k):
+        from autodocumentation import autodoc
+
         jsonBody = None
 
         try:
@@ -41,32 +45,14 @@ class FlaskRequestWriter(object):
 
         output = self._serialize_output(output)
 
-        prefix = "        "
-
-        return """
-
-.. note::
-
-    Request::
-
-        {method} {url}
-{headers}
-{body}
-
-    Response::
-
-{response}
-
-        """.format(
+        return dict(
             method=g.request.method,
             url=g.request.url,
-            body=add_prefix_to_lines(prefix, json.dumps(jsonBody)),
-            headers=add_prefix_to_lines(
-                prefix,
-                json.dumps(dict(g.request.headers), indent=4, sort_keys=True)
-            ),
-            response=add_prefix_to_lines(prefix, output)
-        ).strip("\n\t ")
+            body=json.dumps(jsonBody, indent=4, sort_keys=True),
+            headers=json.dumps(dict(g.request.headers), indent=4, sort_keys=True),
+            response=output,
+            **autodoc.get_context()
+        )
 
     def get_key(self, func):
         return "{}.{}".format(func.__module__, func.__name__)
@@ -107,8 +93,10 @@ class FlaskRequestWriter(object):
     def _serialize_output(self, output):
         if hasattr(output, "json"):
             output = json.dumps(output.json, indent=4)
-        if isinstance(output, (dict, list)):
+        elif isinstance(output, (dict, list)):
             output = json.dumps(output, indent=4)
+        else:
+            output = str(output)
         return output
 
     def clean(self):

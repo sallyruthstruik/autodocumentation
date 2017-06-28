@@ -1,6 +1,6 @@
 import io
 
-from autodoc.compat import to_unicode
+from autodocumentation.compat import to_unicode
 
 
 def add_prefix_to_lines(prefix, s):
