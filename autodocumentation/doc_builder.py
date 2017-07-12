@@ -24,10 +24,12 @@ TEMPLATE = """{% for call in calls %}* {{call.comment or "Пример запр�
 
 FUNCTION_TEMPLATE = """{% for call in calls %}* {{call.comment or "Пример запроса"}}::
 
-    {{call.name}}
-    Args: {{call.args}}
-    Kwargs: {{call.kwargs}}
-    Output: {{call.output}}
+    Функция {{call.name}}
+    Вызвана с параметрами:
+    {% for key, value in call.arguments %}
+    * {{key}}: {{value}}{% endfor %}
+
+    Ответ: {{call.output}}
 {% endfor %}"""
 
 class DocBuilder(object):
