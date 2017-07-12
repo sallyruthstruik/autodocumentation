@@ -22,11 +22,21 @@ TEMPLATE = """{% for call in calls %}* {{call.comment or "Пример запр�
 {{add_prefix_to_lines("        ", call.response)}}
 {% endfor %}"""
 
+FUNCTION_TEMPLATE = """{% for call in calls %}* {{call.comment or "Пример запроса"}}::
+
+    {{call.name}}
+    Args: {{call.args}}
+    Kwargs: {{call.kwargs}}
+    Output: {{call.output}}
+{% endfor %}"""
+
 class DocBuilder(object):
 
     writer = None   #type: FlaskRequestWriter
+    template = None
 
-    def __init__(self, limit=3):
+    def __init__(self, limit=3, template=TEMPLATE):
+        self.template = template
         self.limit = limit
 
     def add_doc(self, func):
@@ -40,12 +50,15 @@ class DocBuilder(object):
             LOGGER.exception("Can't build autodoc for func %s", func)
 
     def _modify_docstring(self, doc, calls):
-        examplesPart = Template(to_unicode(TEMPLATE))
+        examplesPart = Template(to_unicode(self.template))
 
-        space = re.findall(r"([\t ]+)\<examples\>", doc)[0]
+        pattern = r"([\t ]+)\<examples\>"
+        space = re.findall(pattern, doc)[0]
 
-        return add_prefix_to_lines(space, examplesPart.render(
+        rendered = add_prefix_to_lines(space, examplesPart.render(
             calls=calls,
             add_prefix_to_lines=add_prefix_to_lines,
             space=space
         ))
+
+        return re.sub(pattern, rendered, doc, count=1)

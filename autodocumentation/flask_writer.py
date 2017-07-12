@@ -2,56 +2,17 @@
 import json
 import os
 
-from werkzeug.wrappers import Response
+try:
+    from flask import globals as g
+except:
+    pass
 
-from autodocumentation.util import add_prefix_to_lines
-from flask import globals as g
 
-class FlaskRequestWriter(object):
-    """
-    Класс, записывающий контекст выполнения для Flask роутов.
-
-    Сохраняет контекст запроса:
-
-    * Метод
-    * URL
-    * Headers
-    * POST body
-
-    Может использоваться только с методами, возвращающими JSONResponse.
-
-    Пример::
-
-        @autodoc_dec(writer=FlaskRequestWriter())
-        def somemethod():
-            ...
-
-    """
+class BaseWriter(object):
     def __init__(self):
         self.file_path = os.path.join(
             os.path.split(__file__)[0],
             ".calls"
-        )
-
-    def serialize(self, func, output, *a, **k):
-        from autodocumentation import autodoc
-
-        jsonBody = None
-
-        try:
-            jsonBody = g.request.json
-        except:
-            pass
-
-        output = self._serialize_output(output)
-
-        return dict(
-            method=g.request.method,
-            url=g.request.url,
-            body=json.dumps(jsonBody, indent=4, sort_keys=True),
-            headers=json.dumps(dict(g.request.headers), indent=4, sort_keys=True),
-            response=output,
-            **autodoc.get_context()
         )
 
     def get_key(self, func):
@@ -84,6 +45,9 @@ class FlaskRequestWriter(object):
         with open(self.file_path, "w") as fd:
             fd.write(json.dumps(calls, indent=4))
 
+    def serialize(self, func, output, *a, **k):
+        raise NotImplementedError
+
     def get_calls(self, func):
         calls = self._get_saved_calls()
         key = self.get_key(func)
@@ -104,3 +68,47 @@ class FlaskRequestWriter(object):
             os.remove(self.file_path)
         except:
             pass
+
+
+class FlaskRequestWriter(BaseWriter):
+    """
+    Класс, записывающий контекст выполнения для Flask роутов.
+
+    Сохраняет контекст запроса:
+
+    * Метод
+    * URL
+    * Headers
+    * POST body
+
+    Может использоваться только с методами, возвращающими JSONResponse.
+
+    Пример::
+
+        @autodoc_dec(writer=FlaskRequestWriter())
+        def somemethod():
+            ...
+
+    """
+
+    def serialize(self, func, output, *a, **k):
+        from autodocumentation import autodoc
+
+        jsonBody = None
+
+        try:
+            jsonBody = g.request.json
+        except:
+            pass
+
+        output = self._serialize_output(output)
+
+        return dict(
+            method=g.request.method,
+            url=g.request.url,
+            body=json.dumps(jsonBody, indent=4, sort_keys=True),
+            headers=json.dumps(dict(g.request.headers), indent=4, sort_keys=True),
+            response=output,
+            **autodoc.get_context()
+        )
+

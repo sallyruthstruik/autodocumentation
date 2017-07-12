@@ -6,3 +6,9 @@ def to_unicode(s):
             return s.decode("utf-8")
 
     return s
+
+def decode_repr(s):
+    if sys.version_info[0] < 3:
+        return s.decode("string-escape")
+
+    return s

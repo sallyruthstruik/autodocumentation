@@ -1,7 +1,9 @@
+#coding: utf-8
 import json
 import os
 
 from autodocumentation.decorator import autodoc
+from autodocumentation.function_writer import FunctionWriter
 
 try:
     from unittest.mock import patch, Mock
@@ -92,12 +94,33 @@ def test_different_response_types(app):
         assert writer.serialize(func, {"key": "value"})["response"] == '{\n    "key": "value"\n}'
         assert writer.serialize(func, {"key": "value"})["headers"] == '{\n    "Content-Type": "application/json"\n}'
 
+
+def test_function_rendering():
+    writer = FunctionWriter()
+
+    def test(a, b, c=1, d=2):
+        pass
+
+    serialized = writer.serialize(
+        test, None, ["Привет", "Мир"], "Мир", d={"Привет": "Hello"}
+    )
+
+    assert serialized["name"] == "test"
+    assert serialized["output"] == "None"
+    assert serialized["arguments"] == [
+        ["a", "['Привет', 'Мир']"],
+        ['b', "'Мир'"],
+        ['d', "{'Привет': 'Hello'}"]
+    ]
 def test_rendering(app):
 
     writer = FlaskRequestWriter()
     builder = DocBuilder()
 
     doc = """
+
+    Some text before:
+
     <examples>
 """
 
@@ -109,11 +132,12 @@ def test_rendering(app):
             'response': '{\n    "key": "value"\n}',
             'url': '/test?key=value'}]
     )
-    print(modified)
+    assert "Some text before" in modified
     assert """            GET /test?key=value
             {
                 "Content-Type": "application/json"
             }""" in modified
+
 
 
 
