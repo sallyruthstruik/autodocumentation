@@ -16,7 +16,10 @@ class BaseWriter(object):
         )
 
     def get_key(self, func):
-        return "{}.{}".format(func.__module__, func.__name__)
+        return getattr(
+            func, "__autodoc_key__",
+            "{}.{}".format(func.__module__, func.__name__)
+        )
 
     def allow_write(self):
         return os.environ.get("AUTODOC_WRITE")

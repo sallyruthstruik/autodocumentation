@@ -61,9 +61,19 @@ class autodoc(object):
     def get_context(cls):
         return getattr(_locals, "context", {})
 
+    @classmethod
+    def set_key(cls, key):
+
+        def dec(func):
+            func.__autodoc_key__ = key
+            return func
+
+        return dec
+
     def decorator(self, func):
         @wraps(func)
         def inner(*a, **k):
+
             output = func(*a, **k)
 
             if self.writer.allow_write():

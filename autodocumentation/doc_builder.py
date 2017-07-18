@@ -4,7 +4,7 @@ import re
 
 from jinja2.environment import Template
 
-from autodocumentation.compat import to_unicode
+from autodocumentation.compat import to_unicode, to_string
 from autodocumentation.util import add_prefix_to_lines
 
 LOGGER = logging.getLogger("autodoc")
@@ -46,7 +46,7 @@ class DocBuilder(object):
 
         try:
             func.__doc__ = self._modify_docstring(
-                func.__doc__, calls
+                to_unicode(func.__doc__), calls
             )
         except:
             LOGGER.exception("Can't build autodoc for func %s", func)
@@ -63,4 +63,4 @@ class DocBuilder(object):
             space=space
         ))
 
-        return re.sub(pattern, rendered, doc, count=1)
+        return re.sub(pattern, to_string(rendered), to_string(doc), count=1)

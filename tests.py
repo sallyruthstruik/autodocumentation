@@ -119,7 +119,7 @@ def test_rendering(app):
 
     doc = """
 
-    Some text before:
+    Какой то текст:
 
     <examples>
 """
@@ -132,7 +132,7 @@ def test_rendering(app):
             'response': '{\n    "key": "value"\n}',
             'url': '/test?key=value'}]
     )
-    assert "Some text before" in modified
+    assert "Какой то текст" in modified
     assert """            GET /test?key=value
             {
                 "Content-Type": "application/json"
