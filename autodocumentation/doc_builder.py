@@ -33,7 +33,7 @@ FUNCTION_TEMPLATE = """{% for call in calls %}* {{call.comment or "Пример 
 {% endfor %}"""
 
 class DocBuilder(object):
-
+    REPLACE_PATTERN = r"([\t ]+)\<examples\>"
     writer = None   #type: FlaskRequestWriter
     template = None
 
@@ -42,19 +42,21 @@ class DocBuilder(object):
         self.limit = limit
 
     def add_doc(self, func):
-        calls = self.writer.get_calls(func)[:self.limit]
-
         try:
+            calls = self._get_calls(func)
             func.__doc__ = self._modify_docstring(
                 to_unicode(func.__doc__), calls
             )
         except:
             LOGGER.exception("Can't build autodoc for func %s", func)
 
+    def _get_calls(self, func):
+        return self.writer.get_calls(func)[:self.limit]
+
     def _modify_docstring(self, doc, calls):
         examplesPart = Template(to_unicode(self.template))
 
-        pattern = r"([\t ]+)\<examples\>"
+        pattern = self.REPLACE_PATTERN
         space = re.findall(pattern, doc)[0]
 
         rendered = add_prefix_to_lines(space, examplesPart.render(
